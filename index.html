@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>60 Hour Marker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0e6d2; /* Bej cald */
+            --card-bg: #ffffff;
+            --primary-color: #8d6e63; /* Maro cald */
+            --accent-color: #a1887f;
+            --text-color: #4e342e;
+            --progress-bar-bg: #d7ccc8;
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .container.inactive {
+            transform: scale(0.98);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+            font-weight: 600;
+        }
+
+        p {
+            color: var(--accent-color);
+            font-size: 0.9em;
+        }
+
+        .timer-info {
+            background-color: #f7f2f2;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 25px 0;
+            text-align: left;
+            font-size: 0.9em;
+            display: none; /* Ascuns initial */
+        }
+
+        .timer-info.active {
+            display: block;
+        }
+
+        .timer-info div {
+            margin-bottom: 8px;
+        }
+        
+        .timer-info span {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: var(--progress-bar-bg);
+            border-radius: 30px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+            border-radius: 30px;
+            transition: width 0.5s ease-out;
+        }
+
+        .main-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-family: var(--font-family);
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: background-color 0.3s, transform 0.2s;
+            width: 100%;
+        }
+
+        .main-button:hover {
+            background-color: #795548;
+            transform: translateY(-2px);
+        }
+        
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: var(--accent-color);
+        }
+
+    </style>
+</head>
+<body>
+
+    <main class="container inactive" id="appContainer">
+        <h1>Marker de Timp</h1>
+        <p>Apasă butonul pentru a (re)porni un timer de 60 de ore.</p>
+
+        <div class="timer-info" id="timerInfo">
+            <div>Început: <span id="startTime">--</span></div>
+            <div>Final: <span id="endTime">--</span></div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+        
+        <div id="initialMessage">
+            <p>Niciun timer activ. Apasă butonul pentru a începe.</p>
+        </div>
+
+        <button class="main-button" id="mainButton">Marchează Momentul</button>
+        
+        <div class="footer">Creat cu dragoste pe Linux ❤️</div>
+    </main>
+
+    <script>
+        const DURATION_IN_HOURS = 60;
+        const DURATION_IN_MS = DURATION_IN_HOURS * 60 * 60 * 1000;
+
+        // Referințe către elementele DOM
+        const appContainer = document.getElementById('appContainer');
+        const mainButton = document.getElementById('mainButton');
+        const timerInfo = document.getElementById('timerInfo');
+        const initialMessage = document.getElementById('initialMessage');
+        const startTimeEl = document.getElementById('startTime');
+        const endTimeEl = document.getElementById('endTime');
+        const progressBar = document.getElementById('progressBar');
+
+        let timerInterval = null;
+
+        // Funcția de formatare a datei pentru afișare
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '--';
+            const date = new Date(timestamp);
+            return date.toLocaleString('ro-RO', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        // Funcția principală care actualizează UI-ul
+        function updateUI() {
+            const startTime = parseInt(localStorage.getItem('timerStartTime'));
+            if (!startTime) {
+                resetUI();
+                return;
+            }
+
+            const endTime = startTime + DURATION_IN_MS;
+            const now = new Date().getTime();
+
+            if (now >= endTime) {
+                // Timer-ul a expirat
+                localStorage.removeItem('timerStartTime');
+                resetUI();
+                alert("Cele 60 de ore au expirat!");
+                return;
+            }
+
+            // Calcule
+            const totalDuration = endTime - startTime;
+            const elapsed = now - startTime;
+            const progressPercentage = (elapsed / totalDuration) * 100;
+
+            // Actualizare UI
+            appContainer.classList.remove('inactive');
+            timerInfo.classList.add('active');
+            initialMessage.style.display = 'none';
+
+            startTimeEl.textContent = formatDateTime(startTime);
+            endTimeEl.textContent = formatDateTime(endTime);
+            progressBar.style.width = `${progressPercentage}%`;
+            mainButton.textContent = 'Resetează Timer-ul';
+        }
+        
+        // Funcția de resetare a UI-ului la starea inițială
+        function resetUI() {
+            if (timerInterval) clearInterval(timerInterval);
+            appContainer.classList.add('inactive');
+            timerInfo.classList.remove('active');
+            initialMessage.style.display = 'block';
+            progressBar.style.width = '0%';
+            startTimeEl.textContent = '--';
+            endTimeEl.textContent = '--';
+            mainButton.textContent = 'Marchează Momentul';
+        }
+        
+        // Funcția care pornește sau resetează timer-ul
+        function startOrResetTimer() {
+            const now = new Date().getTime();
+            localStorage.setItem('timerStartTime', now);
+            
+            // Oprește orice interval anterior pentru a evita multiple loop-uri
+            if (timerInterval) clearInterval(timerInterval);
+            
+            // Actualizează UI-ul imediat, nu aștepta prima secundă
+            updateUI();
+            
+            // Setează noul interval de update
+            timerInterval = setInterval(updateUI, 1000);
+        }
+
+        // Adaugă event listener la buton
+        mainButton.addEventListener('click', startOrResetTimer);
+
+        // La încărcarea paginii, verifică starea
+        function initialize() {
+            const startTime = localStorage.getItem('timerStartTime');
+            if (startTime) {
+                updateUI(); // Actualizează starea la încărcare
+                timerInterval = setInterval(updateUI, 1000); // Și pornește loop-ul
+            } else {
+                resetUI(); // Afișează starea inițială
+            }
+        }
+
+        // Pornește aplicația
+        initialize();
+    </script>
+</body>
+</html>
