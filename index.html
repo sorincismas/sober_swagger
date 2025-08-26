@@ -124,6 +124,65 @@
         }
 
     </style>
+    <!-- Adaugă aceste scripturi în <head> sau la finalul <body> -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+    // Configurația ta Firebase (o primești din consolă)
+    const firebaseConfig = {
+        apiKey: "AIza...",
+        authDomain: "...",
+        databaseURL: "https://sober-swagger-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "...",
+        storageBucket: "...",
+        messagingSenderId: "...",
+        appId: "..."
+    };
+
+    // Initializează Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const timerRef = database.ref('timer/startTime');
+
+    // ... restul referințelor DOM (mainButton, etc.)
+
+    // NOUA Funcție de start/reset
+    function startOrResetTimer() {
+        const now = new Date().getTime();
+        // Salvează în BAZA DE DATE, nu în localStorage
+        timerRef.set(now);
+    }
+    mainButton.addEventListener('click', startOrResetTimer);
+
+    // NOUA Funcție de inițializare
+    function initialize() {
+        // Ascultă pentru orice schimbare în baza de date
+        timerRef.on('value', (snapshot) => {
+            const startTime = snapshot.val();
+            if (startTime) {
+                // Avem o valoare, pornim update-ul UI
+                if (timerInterval) clearInterval(timerInterval);
+                updateUI(startTime); // Trimitem startTime ca parametru
+                timerInterval = setInterval(() => updateUI(startTime), 1000);
+            } else {
+                // Nu există valoare în DB, resetăm UI
+                resetUI();
+            }
+        });
+    }
+    
+    // Modifică updateUI pentru a primi startTime
+    function updateUI(startTime) {
+        // Nu mai citim din localStorage, îl primim ca argument
+        const endTime = startTime + DURATION_IN_MS;
+        // ... restul logicii de calcul și afișare rămâne la fel
+        // ...
+    }
+
+    // Pornește aplicația
+    initialize();
+</script>
 </head>
 <body>
 
